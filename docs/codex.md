@@ -60,7 +60,6 @@ mkdir -p ~/.codex-insiders
 ```toml
 model = "gpt-5.3-codex-spark"
 model_reasoning_effort = "high"
-personality = "pragmatic"
 model_provider = "poe"
 
 [model_providers.poe]
@@ -73,6 +72,8 @@ env_key = "POE_API_KEY"
 - `model_provider = "poe"`：告诉 Codex 使用名为 `poe` 的 provider
 - `base_url`：Poe 的 OpenAI 兼容端点
 - `env_key`：备用方案（若未用 `login --with-api-key`，Codex 会读该环境变量作为 Bearer token）
+
+> **注意**：不要添加 `personality = "pragmatic"`。Codex CLI 在处理内部小模型（`gpt-5.1-codex-mini`）的人格指令时存在 bug，`model_messages` 字段缺失时会导致 SIGSEGV 崩溃。
 
 ### 第三步：创建包装脚本（服务器上）
 

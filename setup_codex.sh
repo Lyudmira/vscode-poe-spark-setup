@@ -45,7 +45,6 @@ info "写入 ~/.codex-insiders/config.toml..."
 cat > "$HOME/.codex-insiders/config.toml" << 'TOML'
 model = "gpt-5.3-codex-spark"
 model_reasoning_effort = "high"
-personality = "pragmatic"
 model_provider = "poe"
 
 [model_providers.poe]
