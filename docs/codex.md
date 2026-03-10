@@ -58,6 +58,7 @@ mkdir -p ~/.codex-insiders
 ### 第二步：写入 `~/.codex-insiders/config.toml`
 
 ```toml
+model = "gpt-5.3-codex-spark"
 model_provider = "poe"
 
 [model_providers.poe]
@@ -67,6 +68,7 @@ env_key = "POE_API_KEY"
 ```
 
 字段说明：
+- `model = "gpt-5.3-codex-spark"`：Codex CLI 内部自主操作的默认模型（工具规划、背景任务等）。VS Code UI 的模型选择器只覆盖用户发起的请求；CLI 自主操作不经过 UI，读这里。**不设置会回退到硬编码的 `gpt-5.1-codex-mini`，导致模型来回切换。**
 - `model_provider = "poe"`：告诉 Codex 使用名为 `poe` 的 provider
 - `base_url`：Poe 的 OpenAI 兼容端点
 - `env_key`：备用方案（若未用 `login --with-api-key`，Codex 会读该环境变量作为 Bearer token）

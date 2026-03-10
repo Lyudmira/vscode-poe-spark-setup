@@ -43,6 +43,7 @@ ok "目录已就绪"
 # ── 4. 写入 config.toml ──────────────────────────────────────────
 info "写入 ~/.codex-insiders/config.toml..."
 cat > "$HOME/.codex-insiders/config.toml" << 'TOML'
+model = "gpt-5.3-codex-spark"
 model_provider = "poe"
 
 [model_providers.poe]
