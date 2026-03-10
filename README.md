@@ -1,4 +1,4 @@
-# 通过 Poe 订阅尝鲜 GPT-5.3 Spark
+# 通过 Poe 订阅免费尝鲜 GPT-5.3 Spark
 
 在 VS Code 开发环境中，通过 Poe API 使用 GPT-5.3 Spark 模型。本项目提供两种独立的接入方式：
 
@@ -17,7 +17,7 @@
 - [ ] [VS Code Insiders](https://code.visualstudio.com/insiders/) 已安装，并至少连接过远程服务器一次
 - [ ] **Codex 入口**：VS Code Insiders 已安装 **OpenAI ChatGPT** 扩展（`openai.chatgpt`）
 - [ ] **Copilot Chat 入口**：VS Code Insiders 已安装 **GitHub Copilot** + **GitHub Copilot Chat** 扩展
-- [ ] [Poe](https://poe.com) 账号（需订阅），API Key 在 [poe.com/api_key](https://poe.com/api_key) 获取
+- [ ] [Poe](https://poe.com) 账号（无需订阅），API Key 在 [poe.com/api_key](https://poe.com/api_key) 获取
 
 > **测试环境**：本地 Mac 通过 SSH 连接远程 Linux 服务器（x86_64）。
 
