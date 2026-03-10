@@ -26,6 +26,24 @@ preparePostOptions(t){return{temperature:this.options.temperature,top_p:this.opt
 preparePostOptions(t){return{temperature:this.options.temperature,...t,stream:!0}}
 ```
 
+### 孤立 tool result 问题
+
+Copilot Chat 在裁剪上下文窗口时，有时会删除包含 `tool_calls` 的 assistant 消息，但保留后续的 `role: "tool"` 结果消息。Copilot Chat 自己的 Azure OpenAI 端点对此宽容，但 Poe API 严格要求啊每个 `tool` 消息必须有对应的 `tool_calls`，否则返回：
+
+```
+400: No tool call found for function call output with call_id ...
+```
+
+需要在发送请求前过滤掉这些“孤立”的 tool result 消息。具体位置是 `wd` 类的 `makeChatRequest2` 方法：
+
+```javascript
+// 原始代码（有问题）
+async makeChatRequest2(t,r){let a={...t,ignoreStatefulMarker:!1},o=await super.makeChatRequest2(a,r);return l0i(o)}
+
+// patch 后（带孤立 tool result 过滤）
+async makeChatRequest2(t,r){let msgs=t.messages||[],ids=new Set;for(let m of msgs)(m.role===2||m.role==="assistant")&&m.toolCalls&&m.toolCalls.forEach(c=>ids.add(c.id));let cleaned=msgs.filter(m=>!(m.role===3||m.role==="tool")||ids.has(m.toolCallId));let a={...t,ignoreStatefulMarker:!1,messages:cleaned},o=await super.makeChatRequest2(a,r);return l0i(o)}
+```
+
 ### 为什么只能改服务器上的文件
 
 `extension.js` 是 VS Code 服务端扩展的核心文件，实际运行在远程服务器上。本地 Mac 上的 VS Code Insiders 只是一个"远程 UI"——所有扩展逻辑都在服务器端执行，因此 patch 必须在服务器上进行。
@@ -80,14 +98,18 @@ PYEOF
 保存后，Copilot Chat 会弹出输入框要求填写 API Key，输入 Poe 控制台里的 key 即可。  
 在 [poe.com/api_key](https://poe.com/api_key) 获取。
 
-### 第二步：打 patch 移除 `top_p`（服务器上）
+### 第二步：打两个 patch（服务器上）
 
 SSH 登录服务器，执行：
 
 ```bash
 EXT_JS=$(ls ~/.vscode-server-insiders/extensions/github.copilot-chat-*/dist/extension.js 2>/dev/null | tail -1)
 echo "Target: $EXT_JS  ($(wc -c < "$EXT_JS") bytes)"
+```
 
+**Patch 1：移除 `top_p`**
+
+```bash
 python3 - "$EXT_JS" << 'PYEOF'
 import sys, os
 
@@ -107,14 +129,41 @@ if OLD not in content:
 else:
     with open(path, 'w') as f:
         f.write(content.replace(OLD, NEW, 1))
-    print(f"Patch applied. New size: {os.path.getsize(path):,} bytes")
+    print(f"Patch 1 applied. New size: {os.path.getsize(path):,} bytes")
 PYEOF
 ```
 
-验证 patch 有效：
+**Patch 2：过滤孤立 tool result 消息**
 
 ```bash
-grep -c 'top_p:this.options.topP' "$EXT_JS" && echo "PATCH MISSING" || echo "Patch OK"
+python3 - "$EXT_JS" << 'PYEOF'
+import sys, os
+
+path = sys.argv[1]
+OLD = 'async makeChatRequest2(t,r){let a={...t,ignoreStatefulMarker:!1},o=await super.makeChatRequest2(a,r);return l0i(o)}'
+NEW = 'async makeChatRequest2(t,r){let msgs=t.messages||[],ids=new Set;for(let m of msgs)(m.role===2||m.role==="assistant")&&m.toolCalls&&m.toolCalls.forEach(c=>ids.add(c.id));let cleaned=msgs.filter(m=>!(m.role===3||m.role==="tool")||ids.has(m.toolCallId));let a={...t,ignoreStatefulMarker:!1,messages:cleaned},o=await super.makeChatRequest2(a,r);return l0i(o)}'
+
+with open(path) as f:
+    content = f.read()
+
+if OLD not in content:
+    if NEW in content:
+        print("Already patched.")
+    else:
+        print("ERROR: pattern not found. Extension may have updated.", file=__import__('sys').stderr)
+        __import__('sys').exit(1)
+else:
+    with open(path, 'w') as f:
+        f.write(content.replace(OLD, NEW, 1))
+    print(f"Patch 2 applied. New size: {os.path.getsize(path):,} bytes")
+PYEOF
+```
+
+验证两个 patch 均已上线：
+
+```bash
+grep -c 'top_p:this.options.topP' "$EXT_JS" && echo "Patch 1 MISSING" || echo "Patch 1 OK"
+grep -c 'let msgs=t.messages' "$EXT_JS" || echo "Patch 2 MISSING"  # 输出0表示未找到即丢失
 ```
 
 ### 第三步：重启扩展宿主（本地 Mac/PC 上）
@@ -133,7 +182,8 @@ Copilot Chat 扩展更新后，`extension.js` 会被替换，patch 会丢失。
 
 ```bash
 EXT_JS=$(ls ~/.vscode-server-insiders/extensions/github.copilot-chat-*/dist/extension.js 2>/dev/null | tail -1)
-grep -c 'top_p:this.options.topP' "$EXT_JS" && echo "PATCH MISSING - 请重新运行 bash setup_copilot.sh" || echo "Patch OK"
+grep -c 'top_p:this.options.topP' "$EXT_JS" && echo "Patch 1 MISSING" || echo "Patch 1 OK"
+grep -c 'let msgs=t.messages' "$EXT_JS" || echo "Patch 2 MISSING"  # 输出0表示丢失
 ```
 
 只需重新运行 `bash setup_copilot.sh`，脚本会自动检测并重新打 patch。

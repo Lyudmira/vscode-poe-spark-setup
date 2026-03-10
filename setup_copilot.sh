@@ -35,7 +35,7 @@ EXT_SIZE=$(wc -c < "$EXT_JS")
 ok "文件大小：$(( EXT_SIZE / 1024 / 1024 )) MB (${EXT_SIZE} bytes)"
 
 # ── 3. 用 Python 检查完整性并应用 patch ──────────────────────────
-info "应用 patch（移除 Poe 不支持的 top_p 参数）..."
+info "Patch 1/2：移除 Poe 不支持的 top_p 参数..."
 
 python3 - "$EXT_JS" << 'PYEOF'
 import sys, os, re
@@ -108,9 +108,47 @@ assert NEW in verify,     "验证失败：NEW 未找到"
 print("✓ 验证通过")
 PYEOF
 
-ok "Patch 成功"
+ok "Patch 1/2 成功（top_p 已移除）"
 
-# ── 4. 打印手动步骤 ──────────────────────────────────────────────
+# ── 4. Patch 2：过滤孤立 tool result 消息 ────────────────────────
+info "Patch 2/2：过滤孤立 tool result 消息（防止 Poe API 400 错误）..."
+
+python3 - "$EXT_JS" << 'PYEOF'
+import sys, os
+
+ext_js = sys.argv[1]
+
+OLD = 'async makeChatRequest2(t,r){let a={...t,ignoreStatefulMarker:!1},o=await super.makeChatRequest2(a,r);return l0i(o)}'
+NEW = 'async makeChatRequest2(t,r){let msgs=t.messages||[],ids=new Set;for(let m of msgs)(m.role===2||m.role==="assistant")&&m.toolCalls&&m.toolCalls.forEach(c=>ids.add(c.id));let cleaned=msgs.filter(m=>!(m.role===3||m.role==="tool")||ids.has(m.toolCallId));let a={...t,ignoreStatefulMarker:!1,messages:cleaned},o=await super.makeChatRequest2(a,r);return l0i(o)}'
+
+with open(ext_js) as f:
+    content = f.read()
+
+if OLD not in content:
+    if NEW in content:
+        print('✓ Patch 2 已应用，无需重复操作。')
+        sys.exit(0)
+    else:
+        print('✗ 未找到目标字符串（Patch 2），当前扩展版本可能已更新。', file=sys.stderr)
+        sys.exit(1)
+
+content = content.replace(OLD, NEW, 1)
+with open(ext_js, 'w') as f:
+    f.write(content)
+
+final_size = os.path.getsize(ext_js)
+print(f'✓ Patch 2 已应用，文件大小：{final_size:,} 字节')
+
+with open(ext_js) as f:
+    verify = f.read()
+assert OLD not in verify, '验证失败：OLD 仍存在'
+assert NEW in verify,     '验证失败：NEW 未找到'
+print('✓ 验证通过')
+PYEOF
+
+ok "Patch 2/2 成功（孤立 tool result 已过滤）"
+
+# ── 5. 打印手动步骤 ──────────────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "${YELLOW}剩余步骤（在本地 Mac/PC 上操作）：${NC}"
@@ -154,5 +192,7 @@ echo ""
 echo "Copilot Chat 扩展更新后 patch 会丢失，检查方式："
 echo ""
 echo "  EXT_JS=\$(ls ~/.vscode-server-insiders/extensions/github.copilot-chat-*/dist/extension.js 2>/dev/null | tail -1)"
-echo "  grep -c 'top_p:this.options.topP' \"\$EXT_JS\" && echo 'PATCH MISSING - 请重新运行 bash setup_copilot.sh' || echo 'Patch OK'"
+echo "  grep -c 'top_p:this.options.topP' \"\$EXT_JS\" && echo 'Patch 1 MISSING' || echo 'Patch 1 OK'"
+echo "  grep -c 'let msgs=t.messages' \"\$EXT_JS\" || echo 'Patch 2 MISSING'  # 输出0表示未找到即丢失"
+echo "  # 若任一 MISSING，重新运行：bash setup_copilot.sh"
 echo ""
