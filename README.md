@@ -61,6 +61,11 @@ bash setup_copilot.sh
 
 ## 已知限制
 
-- Poe API 仅支持 Chat Completions（`/v1/chat/completions`）格式，不支持 OpenAI Responses API（`/v1/responses`）。Codex 内置的 `web_search_preview` 工具因此在 Poe 下不可用。
-- **Copilot Chat 扩展更新后**，`extension.js` 会被替换，需重新运行 `setup_copilot.sh`。
-- **Codex 扩展更新后**，包装脚本会自动适配（使用 glob 查找最新版本），无需重新运行。
+> 这些是目前已知的闭题或尚未解决的问题，在开始之前请知悉。
+
+| 场景 | 限制 |
+|---|---|
+| **Codex web search** | Spark 模型不主动调用 web search，Poe API 也不支持对应接口。Web search 在 Codex 下基本不可用 |
+| **Copilot tool use 农错误** | 长任务中上下文剂切仍可能触发 400 错误，呈现孤立 tool result；已打 patch 但不总是足够 |
+| **模型自行终止** | 长任务中模型可能中途停止，需手动输入指令（如 `continue`）撑展；尚未解决 |
+| **`xhigh` 思考量** | 耗时远大于收益，更容易崩溃；尚未完全探明。正式使用建议选 `medium` 或 `high` |

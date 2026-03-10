@@ -235,3 +235,23 @@ fi
 ```
 
 **失败原因**：`chatgpt.cliExecutable` 的 scope 是 `application`。VS Code 规范规定 `application` scope 的设置只从**本地客户端**的 User settings 读取，服务端 Machine settings 里的同名项被完全忽略。
+
+---
+
+## 已知限制与注意事项
+
+### Web Search 不可用
+
+Poe API 仅支持 Chat Completions（`/v1/chat/completions`）格式，不支持 OpenAI Responses API（`/v1/responses`）。Codex 内置的 `web_search_preview` 工具因此在 Poe 下不可用。
+
+更重要的是：**Spark 模型不会主动调用 web search**。即便未来路由问题被解决，模型本身在当前版本也不主动触发该工具。可以认为在 Codex 下 web search 基本不可用，除非未来进行专门的 prompt 设计。
+
+### 任务中途自行终止
+
+模型在执行较长任务时可能中途自行停止而不给出任何错误提示。此时需要手动输入指令（如 `continue` 或重新描述任务）来恢复进行。**此问题尚未解决。**
+
+### `xhigh` 思考耗时远大于收益
+
+`model_reasoning_effort = "xhigh"` 可能极大增加单次请求的时间消耗，但输出质量并不一定有同等收益，同时更容易在长任务中引发崩溃。此问题尚未完全探明。
+
+**建议：在非测试阶段的正式使用中，选用 `medium` 或 `high`。** `xhigh` 仅适合对单 prompt 调试、短任务的实验性探索。

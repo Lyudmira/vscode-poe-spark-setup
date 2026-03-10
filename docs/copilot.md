@@ -225,7 +225,23 @@ PYEOF
 
 ---
 
-## 已知限制
+## 已知限制与注意事项
+
+### Tool use 在长任务中仍可能报错
+
+Copilot Chat 虎以正常调用它自己的 web search 、终端执行等工具。但在长任务中，上下文窗口剂切可能使得孤立 tool result 问题重现并返回 400 错误。**我们的 Patch 2 并不总是能解决该问题。**如果下层 API 上下文内和上下文外的消息均展现孤立工具结果，过滤无效。此类错误在任务本身复杂、该模型进行多轮工具调用时尤为显著。遇到该情况时建议缩短任务、逐步分解。
+
+### 任务中途自行终止
+
+模型在执行趃长任务时可能中途自行停止而不给出任何错误提示。此时需要手动输入指令（如 `continue`）来恢复进行。**此问题尚未解决。**
+
+### `xhigh` 思考耗时远大于收益
+
+`xhigh` 思考量可能极大增加单次请求的时间消耗，但输出质量并不一定有同等收益，同时更容易在长任务中引发崩溃。此问题尚未完全探明。
+
+**建议：在非测试阶段的正式使用中，在 Copilot Chat 的思考量选项 (Thinking effort) 中选用 medium 或 high。**
+
+### Poe API 其他限制
 
 - Poe API 仅支持 Chat Completions（`/v1/chat/completions`），不支持 OpenAI Responses API（`/v1/responses`）。Copilot Chat 的部分 agent 工具若依赖 Responses API 可能不可用。
 - API Key 存储在 VS Code 的 globalState（加密），不在 settings.json 里，随扩展版本升级自动保留，无需重新输入。
