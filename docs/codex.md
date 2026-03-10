@@ -58,8 +58,6 @@ mkdir -p ~/.codex-insiders
 ### 第二步：写入 `~/.codex-insiders/config.toml`
 
 ```toml
-model = "gpt-5.3-codex-spark"
-model_reasoning_effort = "high"
 model_provider = "poe"
 
 [model_providers.poe]
