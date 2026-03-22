@@ -1,71 +1,74 @@
-# 通过 Poe 订阅免费尝鲜 GPT-5.3 Spark
+# Use GPT-5.3 Spark via Poe in VS Code
 
-在 VS Code 开发环境中，通过 Poe API 使用 GPT-5.3 Spark 模型。本项目提供两种独立的接入方式：
+Use GPT-5.3 Spark through the Poe API inside VS Code. This repository provides two independent integration paths:
 
-| 入口 | 工具 | 定位 |
+| Entry | Tool | Intended use |
 |---|---|---|
-| **Codex** | VS Code Insiders 的 OpenAI ChatGPT 扩展 | 终端交互式 AI 助手（代码执行、文件编辑、多步骤 agent） |
-| **Copilot Chat** | VS Code Insiders 的 GitHub Copilot Chat | 编辑器内聊天助手 |
+| **Codex** | OpenAI ChatGPT extension in VS Code Insiders | Terminal-style AI assistant for code execution, file edits, and multi-step agent tasks |
+| **Copilot Chat** | GitHub Copilot Chat in VS Code Insiders | In-editor chat assistant |
 
-两种方式互相独立，可以同时配置。
-
----
-
-## 前置条件（需手动安装，脚本无法代劳）
-
-- [ ] [VS Code](https://code.visualstudio.com/)（Stable）已安装，并至少连接过远程服务器一次
-- [ ] [VS Code Insiders](https://code.visualstudio.com/insiders/) 已安装，并至少连接过远程服务器一次
-- [ ] **Codex 入口**：VS Code Insiders 已安装 **OpenAI ChatGPT** 扩展（`openai.chatgpt`）
-- [ ] **Copilot Chat 入口**：VS Code Insiders 已安装 **GitHub Copilot** + **GitHub Copilot Chat** 扩展
-- [ ] [Poe](https://poe.com) 账号（无需订阅），API Key 在 [poe.com/api_key](https://poe.com/api_key) 获取
-
-> **测试环境**：本地 Mac 通过 SSH 连接远程 Linux 服务器（x86_64）。
+The two paths are independent and can be configured side by side.
 
 ---
 
-## 快速开始
+## Prerequisites
 
-SSH 登录服务器后，在本目录运行对应脚本：
+- [ ] [VS Code](https://code.visualstudio.com/) Stable is installed and has connected to the remote server at least once
+- [ ] [VS Code Insiders](https://code.visualstudio.com/insiders/) is installed and has connected to the remote server at least once
+- [ ] For the Codex path: VS Code Insiders has the OpenAI ChatGPT extension installed (`openai.chatgpt`)
+- [ ] For the Copilot Chat path: VS Code Insiders has GitHub Copilot and GitHub Copilot Chat installed
+- [ ] A [Poe](https://poe.com) account is available; get your API key from [poe.com/api_key](https://poe.com/api_key)
 
-### Codex 入口
+> Tested environment: local Mac connected to a remote Linux server over SSH (x86_64).
+
+---
+
+## Quick Start
+
+SSH into the server and run the matching script in this directory.
+
+### Codex
 
 ```bash
 bash setup_codex.sh
 ```
 
-脚本会自动完成服务端的全部配置。完成后按提示在本地 VS Code Insiders 的 `settings.json` 里添加一行，然后重启 Extension Host。
+This script completes all server-side setup. After it finishes, add the prompted line to your local VS Code Insiders settings.json, then restart the Extension Host.
 
-### Copilot Chat 入口
+### Copilot Chat
 
 ```bash
 bash setup_copilot.sh
 ```
 
-脚本会自动完成服务端 patch。完成后按提示在本地 VS Code Insiders 的 `settings.json` 里添加模型配置，第一次使用时输入 Poe API Key。
+This script applies the required server-side patches. After it finishes, add the model configuration in local VS Code Insiders settings.json, then enter your Poe API key on first use.
+
+> Note: after GitHub Copilot Chat upgrades, the top_p patch is lost and you need to run `bash setup_copilot.sh` again.
 
 ---
 
-## 项目结构
+## Project Structure
 
 ```
 .
-├── README.md              本文件
-├── setup_codex.sh         Codex 入口一站式脚本（在服务器上运行）
-├── setup_copilot.sh       Copilot Chat 入口一站式脚本（在服务器上运行）
+├── README.md              English overview
+├── README_zhCN.md         Chinese overview
+├── setup_codex.sh         One-shot Codex setup script on the server
+├── setup_copilot.sh       One-shot Copilot Chat setup script on the server
 └── docs/
-    ├── codex.md           Codex 完整原理与手动配置教程
-    └── copilot.md         Copilot Chat 完整原理与手动配置教程
+    ├── codex.md           Full Codex internals and manual setup guide
+    └── copilot.md         Full Copilot Chat internals and manual setup guide
 ```
 
 ---
 
-## 已知限制
+## Known Limitations
 
-> 这些是目前已知的闭题或尚未解决的问题，在开始之前请知悉。
+> These are known limitations or unresolved issues. Review them before you start.
 
-| 场景 | 限制 |
+| Scenario | Limitation |
 |---|---|
-| **Codex web search** | Spark 模型不主动调用 web search，Poe API 也不支持对应接口。Web search 在 Codex 下基本不可用 |
-| **Copilot tool use 农错误** | 长任务中上下文剂切仍可能触发 400 错误，呈现孤立 tool result；已打 patch 但不总是足够 |
-| **模型自行终止** | 长任务中模型可能中途停止，需手动输入指令（如 `continue`）撑展；尚未解决 |
-| **`xhigh` 思考量** | 耗时远大于收益，更容易崩溃；尚未完全探明。正式使用建议选 `medium` 或 `high` |
+| **Codex web search** | Spark does not proactively call web search, and the Poe API does not expose the corresponding interface. Web search is effectively unavailable in Codex. |
+| **Copilot tool use 400** | Long tasks can still hit 400 errors when context trimming leaves orphaned tool results. The patch helps, but is not always sufficient. |
+| **Model stops mid-task** | The model may stop in the middle of a long task and require a manual follow-up such as `continue`. |
+| **`xhigh` reasoning effort** | It usually costs much more time than the benefit justifies and is more likely to crash. In practice, `medium` or `high` is recommended. |

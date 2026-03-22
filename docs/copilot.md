@@ -140,22 +140,28 @@ python3 - "$EXT_JS" << 'PYEOF'
 import sys, os
 
 path = sys.argv[1]
-OLD = 'async makeChatRequest2(t,r){let a={...t,ignoreStatefulMarker:!1},o=await super.makeChatRequest2(a,r);return l0i(o)}'
-NEW = 'async makeChatRequest2(t,r){let msgs=t.messages||[],ids=new Set;for(let m of msgs)(m.role===2||m.role==="assistant")&&m.toolCalls&&m.toolCalls.forEach(c=>ids.add(c.id));let cleaned=msgs.filter(m=>!(m.role===3||m.role==="tool")||ids.has(m.toolCallId));let a={...t,ignoreStatefulMarker:!1,messages:cleaned},o=await super.makeChatRequest2(a,r);return l0i(o)}'
+LEGACY_OLD = 'async makeChatRequest2(t,r){let a={...t,ignoreStatefulMarker:!1},o=await super.makeChatRequest2(a,r);return l0i(o)}'
+LEGACY_NEW = 'async makeChatRequest2(t,r){let __poeToolIds=new Set,__poeMsgs=t.messages||[];for(let m of __poeMsgs)(m.role===2||m.role==="assistant")&&m.toolCalls&&m.toolCalls.forEach(c=>__poeToolIds.add(c.id));let __poeCleaned=__poeMsgs.filter(m=>!(m.role===3||m.role==="tool")||__poeToolIds.has(m.toolCallId));let a={...t,ignoreStatefulMarker:!1,messages:__poeCleaned},o=await super.makeChatRequest2(a,r);return l0i(o)}'
+CURRENT_OLD = 'async makeChatRequest2(e,t){let r=e.useWebSocket??!!(e.turnId&&e.conversationId&&this.useWebSocketResponsesApi&&this._configurationService.getExperimentBasedConfig(j.TeamInternal.ResponsesApiWebSocketEnabled,this._expService)),a=e.ignoreStatefulMarker??!(r&&e.conversationId&&e.turnId&&this._chatWebSocketService.hasActiveConnection(e.conversationId,e.turnId)),o=await this._makeChatRequest2({...e,useWebSocket:r,ignoreStatefulMarker:a},t);return o.type==="invalid_stateful_marker"?this._makeChatRequest2({...e,useWebSocket:r,ignoreStatefulMarker:!0},t):o}'
+CURRENT_NEW = 'async makeChatRequest2(e,t){let __poeToolIds=new Set,__poeMsgs=e.messages||[];for(let n of __poeMsgs)(n.role===2||n.role==="assistant")&&n.toolCalls&&n.toolCalls.forEach(i=>__poeToolIds.add(i.id));let __poeCleaned=__poeMsgs.filter(n=>!(n.role===3||n.role==="tool")||__poeToolIds.has(n.toolCallId)),r=e.useWebSocket??!!(e.turnId&&e.conversationId&&this.useWebSocketResponsesApi&&this._configurationService.getExperimentBasedConfig(j.TeamInternal.ResponsesApiWebSocketEnabled,this._expService)),a=e.ignoreStatefulMarker??!(r&&e.conversationId&&e.turnId&&this._chatWebSocketService.hasActiveConnection(e.conversationId,e.turnId)),o=await this._makeChatRequest2({...e,messages:__poeCleaned,useWebSocket:r,ignoreStatefulMarker:a},t);return o.type==="invalid_stateful_marker"?this._makeChatRequest2({...e,messages:__poeCleaned,useWebSocket:r,ignoreStatefulMarker:!0},t):o}'
+PATCH_MARKER = '__poeToolIds'
 
 with open(path) as f:
     content = f.read()
 
-if OLD not in content:
-    if NEW in content:
+if PATCH_MARKER in content:
         print("Already patched.")
-    else:
-        print("ERROR: pattern not found. Extension may have updated.", file=__import__('sys').stderr)
-        __import__('sys').exit(1)
-else:
+elif LEGACY_OLD in content:
     with open(path, 'w') as f:
-        f.write(content.replace(OLD, NEW, 1))
+        f.write(content.replace(LEGACY_OLD, LEGACY_NEW, 1))
     print(f"Patch 2 applied. New size: {os.path.getsize(path):,} bytes")
+elif CURRENT_OLD in content:
+    with open(path, 'w') as f:
+        f.write(content.replace(CURRENT_OLD, CURRENT_NEW, 1))
+    print(f"Patch 2 applied. New size: {os.path.getsize(path):,} bytes")
+else:
+    print("ERROR: pattern not found. Extension may have updated.", file=__import__('sys').stderr)
+    __import__('sys').exit(1)
 PYEOF
 ```
 
@@ -163,7 +169,7 @@ PYEOF
 
 ```bash
 grep -c 'top_p:this.options.topP' "$EXT_JS" && echo "Patch 1 MISSING" || echo "Patch 1 OK"
-grep -c 'let msgs=t.messages' "$EXT_JS" || echo "Patch 2 MISSING"  # 输出0表示未找到即丢失
+grep -c '__poeToolIds' "$EXT_JS" || echo "Patch 2 MISSING"  # 输出0表示未找到即丢失
 ```
 
 ### 第三步：重启扩展宿主（本地 Mac/PC 上）
@@ -183,7 +189,7 @@ Copilot Chat 扩展更新后，`extension.js` 会被替换，patch 会丢失。
 ```bash
 EXT_JS=$(ls ~/.vscode-server-insiders/extensions/github.copilot-chat-*/dist/extension.js 2>/dev/null | tail -1)
 grep -c 'top_p:this.options.topP' "$EXT_JS" && echo "Patch 1 MISSING" || echo "Patch 1 OK"
-grep -c 'let msgs=t.messages' "$EXT_JS" || echo "Patch 2 MISSING"  # 输出0表示丢失
+grep -c '__poeToolIds' "$EXT_JS" || echo "Patch 2 MISSING"  # 输出0表示丢失
 ```
 
 只需重新运行 `bash setup_copilot.sh`，脚本会自动检测并重新打 patch。
